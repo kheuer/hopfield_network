@@ -4,6 +4,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
+from PIL import Image, ImageDraw, ImageFont
+
 import logging
 logging.basicConfig()
 logging.basicConfig(level=logging.NOTSET)
@@ -48,6 +50,25 @@ class HopfieldNetwork:
 
     def visualize_pattern(self, i):
         return self.visualize(self.patterns[i])
+
+    def create_pattern(self, char, size=None):
+        if size is None:
+            size = self.size[0]
+        # create font
+        pil_font = ImageFont.truetype("arial.ttf", size=size // len(char), encoding="unic")
+        text_width, text_height = pil_font.getsize(char)
+
+        # create a blank canvas with extra space between lines
+        canvas = Image.new("RGB", [size, size], (255, 255, 255))
+
+        # draw the text onto the canvas
+        draw = ImageDraw.Draw(canvas)
+        offset = ((size - text_width) // 2,
+                  (size - text_height) // 2)
+        draw.text(offset, char, font=pil_font, fill="#000000")
+
+        # Convert the canvas into an array with values in [0, 1]
+        return ((255 - np.asarray(canvas)) / 255.0)[:, :, 0].round()
 
 if __name__ == '__main__':
     nn = HopfieldNetwork(100)
