@@ -14,11 +14,18 @@ logger.setLevel(logging.DEBUG)
 
 class HopfieldNetwork:
     def __init__(self, n_neurons):
+        """
+        Initialize a Hopfield Network with a quadratic shape of (n_neurons**0.5, n_neurons**0.5)
+
+        :param n_neurons: The number of neurons the network should have.
+        """
         if n_neurons < 4:
             raise ValueError(f"n_neurons provided is: {n_neurons} but must be at least 4")
         sqrt = np.sqrt(n_neurons)
         if not sqrt.is_integer():
             raise ValueError(f"n_neurons provided is: {n_neurons} but must be divisible by itself to an int")
+        if n_neurons < 100:
+            logger.warning("We recommend to choose n_neurons to be >= 100 to ensure proper generation of characters.")
         self.n_neurons = n_neurons
         self.size = (int(sqrt), int(sqrt))
         self.patterns = []
@@ -27,11 +34,23 @@ class HopfieldNetwork:
         logger.info(f"Initialized Hopfield network of size {self.size} with {self.n_neurons} Neurons")
 
     def train(self, pattern):
+        """
+        Train the network to learn a pattern.
+
+        :param pattern: numpy.array describing binary state for each neuron
+        :return: None
+        """
         # todo
         self.patterns.append(pattern)
 
 
     def visualize(self, state):
+        """
+        Return a matplotlib figure representing the binary state for each neuron.
+
+        :param state: numpy.array describing binary state for each neuron
+        :return: matplotlib.figure.Figure object
+        """
         fig = Figure(figsize=(3, 3), dpi=100)
         plot = fig.add_subplot(111)
         plot.imshow(state, cmap="Blues",  interpolation="nearest")
@@ -40,6 +59,11 @@ class HopfieldNetwork:
         return fig
 
     def get_random_state(self):
+        """
+        Get a random network state.
+
+        :return: numpy.array
+        """
         return np.random.rand(self.size[0], self.size[1]).round()
 
     def set_state(self, state):
@@ -52,6 +76,13 @@ class HopfieldNetwork:
         return self.visualize(self.patterns[i])
 
     def create_pattern(self, char, size=None):
+        """
+        Get a pattern representing the binary states of each neuron in the network.
+
+        :param char: str string to represent
+        :param size: int size of the font, leave empty to auto fit
+        :return: numpy.array
+        """
         if size is None:
             size = self.size[0]
         # create font

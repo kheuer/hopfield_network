@@ -147,7 +147,7 @@ class GUI:
             plot = self.get_plot_widget(placeholder_fig_pattern, self.pattern_menu)
             plot.grid(row=1, column=0, columnspan=2)
             self.pattern_desc.set("Saved patterns")
-            logger.info("No patterns are saved.")
+            logger.debug("No patterns are saved.")
             return
         max_pattern_index = len(patterns) - 1
         self.pattern_index += change
@@ -185,12 +185,15 @@ class GUI:
 
     def load_model(self, number):
         if number == 1:
+            logger.debug("Loaded Model 'ABC'")
             for ch in list("ABC"):
                 self.save_pattern(ch)
         elif number == 2:
+            logger.debug("Loaded Model 'ABCCCC'")
             for ch in list("ABCCCC"):
                 self.save_pattern(ch)
         elif number == 3:
+            logger.debug("Loaded Model 'Alphabet'")
             for ch in list("abcdefghijklmnopqrstuvwxyzäöü"):
                 self.save_pattern(ch)
 
@@ -217,6 +220,7 @@ class GUI:
         self.change_pattern(0)
 
     def init_network(self, n_neurons):
+        self.pattern_index = 0
         self.network = HopfieldNetwork(n_neurons)
 
     def get_plot_widget(self, fig, master):
