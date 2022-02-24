@@ -82,6 +82,30 @@ class GUI:
                                  command=partial(self.network_action, self.load_model, 3))
         save_model3_btn.grid(row=1, column=0)
 
+        advance_network_frame = Frame(self.control_menu)
+        advance_network_frame.pack()
+        advance_network_1_btn = Button(advance_network_frame, text="Advance 1 Step", width=27, height=3,
+                                 command=partial(self.network_action, self.advance_model, 1))
+        advance_network_1_btn.grid(row=0, column=0)
+        advance_network_10_btn = Button(advance_network_frame, text="Advance 10 Steps", width=27, height=3,
+                                       command=partial(self.network_action, self.advance_model, 10))
+        advance_network_10_btn.grid(row=0, column=1)
+
+        advance_network_n_frame = Frame(self.control_menu)
+        advance_network_n_frame.pack()
+        n_steps_frame = Frame(advance_network_n_frame)
+        n_steps_frame.grid(row=0, column=1)
+        n_steps_field = Entry(n_steps_frame)
+        n_steps_field.insert(-1, 100)
+        n_steps_field.pack()
+        n_steps_label = Label(n_steps_frame, text="Number of Steps")
+        n_steps_label.pack()
+        advance_network_n_btn = Button(advance_network_n_frame, text="Advance Network n steps", width=35, height=3,
+                                  command=partial(self.network_action, self.advance_model, partial(self.get_numeric_input, n_steps_field)))
+        advance_network_n_btn.grid(row=0, column=0)
+
+
+
         # current
         current_state_label = Label(self.current_menu, text="Current Network state")
         current_state_label.grid(row=0, column=0)
@@ -91,12 +115,15 @@ class GUI:
 
         current_menu_lower = Frame(self.current_menu)
         current_menu_lower.grid(row=2, column=0)
-        random_state = Button(current_menu_lower, text="Randomise Network state", width=20, height=3,
+        random_state = Button(current_menu_lower, text="Randomise Network\nstate", width=13, height=3,
                               command=partial(self.network_action, self.change_network_state, "random"))
         random_state.grid(row=0, column=0)
-        clear_state = Button(current_menu_lower, text="Clear Network state", width=20, height=3,
-                             command=partial(self.network_action, self.change_network_state, "empty"))
-        clear_state.grid(row=0, column=1)
+        copy_state = Button(current_menu_lower, text="Set shown state", width=13, height=3,
+                             command=partial(self.network_action, self.change_network_state, "current"))
+        copy_state.grid(row=0, column=1)
+        mutate_state = Button(current_menu_lower, text="Mutate state", width=13, height=3,
+                            command=partial(self.network_action, self.change_network_state, "mutate"))
+        mutate_state.grid(row=0, column=2)
 
         # patterns
         self.pattern_desc = StringVar()
@@ -115,6 +142,13 @@ class GUI:
         clear_state = Button(patterns_menu_lower, text="Next", width=20, height=3,
                              command=partial(self.network_action, self.change_pattern, 1))
         clear_state.grid(row=0, column=1)
+
+
+        plot_weights = Button(self.control_menu, text="Plot Weights", width=20, height=3,   # Debug
+                             command=self.visualize_weight_matrix)
+        plot_weights.pack()
+
+
 
         self.network_action(lambda: None)
         self.root.mainloop()
@@ -147,7 +181,6 @@ class GUI:
             plot = self.get_plot_widget(placeholder_fig_pattern, self.pattern_menu)
             plot.grid(row=1, column=0, columnspan=2)
             self.pattern_desc.set("Saved patterns")
-            logger.debug("No patterns are saved.")
             return
         max_pattern_index = len(patterns) - 1
         self.pattern_index += change
@@ -171,9 +204,27 @@ class GUI:
                 state = np.zeros(self.network.size)
             elif state == "character":
                 state = self.network.create_pattern(self.get_character_input(self.ch_selection))
+            elif state == "current":
+                if not self.network.patterns:
+                    logger.warning("You must train at least one state first.")
+                    state = self.translate_state("empty")
+                else:
+                    state = self.network.patterns[self.pattern_index]
+            elif state == "mutate":
+                current = self.network.state.clone()
+                for i, row in enumerate(current):
+                    for j, val in enumerate(row):
+                        if np.random.random() < 0.05:
+                            current[i, j] = 0 - current[i, j]
+                state = current
             elif len(state) == 1:   # is string of a single character that should be represented
                 state = self.network.create_pattern(state)
-        return state
+        return state.clone()    # return deep copy to avoid unexpected side effects
+
+    def advance_model(self, steps):
+        logger.info(f"Advance Network by {steps} steps.")
+        self.network.run(steps)
+        self.network.set_state_from_neurons()
 
     def change_network_state(self, state):
         state = self.translate_state(state)
@@ -181,7 +232,9 @@ class GUI:
 
     def save_pattern(self, pattern):
         state = self.translate_state(pattern)
-        self.network.train(state)
+        self.network.add_pattern(state)
+        if pattern == "character":
+            self.network.train()
 
     def load_model(self, number):
         if number == 1:
@@ -196,8 +249,10 @@ class GUI:
             logger.debug("Loaded Model 'Alphabet'")
             for ch in list("abcdefghijklmnopqrstuvwxyzäöü"):
                 self.save_pattern(ch)
+        self.network.train()
 
-
+    def visualize_weight_matrix(self):
+        self.network.visualize_weight_matrix()
 
     def network_action(self, action, *args, **kwargs):
         logger.debug(f"Network action call to: {action} with args: {args} and kwargs: {kwargs}")
