@@ -11,6 +11,7 @@ from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolb
 from network import HopfieldNetwork
 from functools import partial
 import logging
+import time
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -84,11 +85,11 @@ class GUI:
 
         advance_network_frame = Frame(self.control_menu)
         advance_network_frame.pack()
-        advance_network_1_btn = Button(advance_network_frame, text="Advance 1 Step", width=27, height=3,
-                                 command=partial(self.network_action, self.advance_model, 1))
+        advance_network_1_btn = Button(advance_network_frame, text="Advance 100 Step", width=27, height=3,
+                                 command=partial(self.network_action, self.advance_model, 100))
         advance_network_1_btn.grid(row=0, column=0)
-        advance_network_10_btn = Button(advance_network_frame, text="Advance 10 Steps", width=27, height=3,
-                                       command=partial(self.network_action, self.advance_model, 10))
+        advance_network_10_btn = Button(advance_network_frame, text="Solve model", width=27, height=3,
+                                       command=partial(self.network_action, self.solve_network))
         advance_network_10_btn.grid(row=0, column=1)
 
         advance_network_n_frame = Frame(self.control_menu)
@@ -96,7 +97,7 @@ class GUI:
         n_steps_frame = Frame(advance_network_n_frame)
         n_steps_frame.grid(row=0, column=1)
         n_steps_field = Entry(n_steps_frame)
-        n_steps_field.insert(-1, 100)
+        n_steps_field.insert(-1, 1000)
         n_steps_field.pack()
         n_steps_label = Label(n_steps_frame, text="Number of Steps")
         n_steps_label.pack()
@@ -107,7 +108,9 @@ class GUI:
 
 
         # current
-        current_state_label = Label(self.current_menu, text="Current Network state")
+        self.state_desc = StringVar()
+        self.state_desc.set(f"Current Network state")
+        current_state_label = Label(self.current_menu, textvariable=self.state_desc)
         current_state_label.grid(row=0, column=0)
         placeholder_fig_state = Figure(figsize=(3, 3), dpi=100)
         current_plot = self.get_plot_widget(placeholder_fig_state, self.current_menu)
@@ -163,12 +166,13 @@ class GUI:
     def get_character_input(self, field):
         val = field.get()
         if len(val) == 1:
-            if val.isalpha():
-                return val
-            else:
-                raise ValueError("You must provide an alphabetical character")
+            return val
+        elif len(val) > 1:
+            logger.info(f"String must be a single character, shortened to: {val[0]}")
+            return val[0]
         else:
-            raise ValueError("You must provide a single character.")
+            logger.info("You must provide a value, using: '.'")
+            return "."
 
     def change_pattern(self, change):
         patterns = self.network.patterns
@@ -261,18 +265,21 @@ class GUI:
             arg = args[i]
             if isinstance(arg, partial):
                 args[i] = arg()
-                logger.debug(f"Changed **args to {args}")
+                #logger.debug(f"Changed **args to {args}")
         args = tuple(args)
         for arg in kwargs:
             if isinstance(arg, partial):
                 args = list(kwargs)
                 args[kwargs.index(arg)] = arg()
                 args = tuple(kwargs)
-                logger.debug(f"Changed **kwargs to {kwargs}")
+                #logger.debug(f"Changed **kwargs to {kwargs}")
 
         action(*args, **kwargs)
         self.visualize_network()
         self.change_pattern(0)
+
+    def solve_network(self):
+        self.network.solve()
 
     def init_network(self, n_neurons):
         self.pattern_index = 0
@@ -291,3 +298,8 @@ class GUI:
     def visualize_pattern(self, pattern):
         fig = self.network.visualize(pattern)
         self.add_plot(fig, 2, 1)
+
+if __name__ == '__main__':
+    logger.info("starting.")
+    gui = GUI()
+    logger.info("exiting.")

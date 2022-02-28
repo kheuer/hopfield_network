@@ -6,6 +6,7 @@ import matplotlib.cm as cm
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
 from PIL import Image, ImageDraw, ImageFont
+import time
 
 import logging
 logging.basicConfig()
@@ -30,8 +31,8 @@ class HopfieldNetwork:
         self.n_neurons = n_neurons
         self.size = (int(sqrt), int(sqrt))
         self.patterns = []
+        self.energies = []
         self.state = None
-
         self.neurons = []
         n = 0
         for i in range(self.size[0]):
@@ -40,14 +41,27 @@ class HopfieldNetwork:
                 self.neurons.append(neuron)
                 n += 1
         self.set_random_state()
+
         self.weights = torch.zeros([self.n_neurons, self.n_neurons])
-        #eye = np.diag_indices(self.weights.shape[0])   # set diagonal to 0
-        #self.weights[eye[0], eye[1]] = torch.zeros(self.weights.shape[0])
+        #self.energy = self.get_energy(self.state)
 
         logger.info(f"Initialized Hopfield network of size {self.size} with {self.n_neurons} Neurons")
 
+    def get_energy(self, pattern):
+        start = time.time()
+        energy = 0
+        for neuron_i, neuron_j in IterNeurons(self.neurons):
+            if neuron_i.state == neuron_j.state:
+                energy += self.weights[neuron_i.n, neuron_j.n]
+            else:
+                energy -= self.weights[neuron_i.n, neuron_j.n]
+        energy *= -1
+        energy -= torch.sum(pattern)
+        # TODO: Why is this positive?
+        return energy
+
     def visualize_weight_matrix(self):
-        plt.matshow(self.weights, cmap="binary")
+        plt.matshow(self.weights, cmap="Blues")
         plt.show()
 
     def train(self):
@@ -56,14 +70,16 @@ class HopfieldNetwork:
 
         :return: None
         """
+        start = time.time()
         self.weights = torch.zeros([self.n_neurons, self.n_neurons])
-        for neuron_i in self.neurons:
-            for neuron_j in self.neurons:
-                if neuron_i is neuron_j:
-                    continue
-                for pattern in self.patterns:
-                    self.weights[neuron_i.n, neuron_j.n] += pattern[neuron_i.i, neuron_i.j] * pattern[neuron_j.i, neuron_j.j]
-                self.weights[neuron_i.n, neuron_j.n] /= len(self.patterns)
+        for neuron_i, neuron_j in IterNeurons(self.neurons):
+            hebbian_sum = 0
+            for pattern in self.patterns:
+                hebbian_sum += pattern[neuron_i.i, neuron_i.j] * pattern[neuron_j.i, neuron_j.j]
+            hebbian_weight = hebbian_sum / len(self.patterns)
+            self.weights[neuron_i.n, neuron_j.n], self.weights[neuron_j.n, neuron_i.n] = hebbian_weight, hebbian_weight
+        logger.debug(f"Finished training in {int(time.time()- start)} seconds.")
+        #self.energy = self.get_energy(self.state)
 
     def add_pattern(self, pattern):
         """
@@ -72,9 +88,7 @@ class HopfieldNetwork:
         :param pattern: torch.Tensor of pattern
         :return: None
         """
-        print(pattern)
         self.patterns.append(pattern)
-
 
     def run(self, steps):
         """
@@ -83,9 +97,28 @@ class HopfieldNetwork:
         :param steps: int describing how often a neuron should be given the chance to update
         :return: None
         """
+        start = time.time()
         for i in range(steps):
             neuron = np.random.choice(self.neurons)
             neuron.update()
+        logger.debug(f"Finished update in {int(time.time()- start)} seconds.")
+        #self.energy = self.get_energy(self.state)
+
+    def solve(self):
+        logger.debug("Starting to solve network.")
+        start = time.time()
+        while True:
+            self.run(100)
+            if self.is_in_local_minima():
+                break
+        self.set_state_from_neurons()
+        logger.debug(f"Solved network in {int(time.time() - start)} seconds.")
+
+    def is_in_local_minima(self):
+        for neuron in self.neurons:
+            if neuron.can_update():
+                return False
+        return True
 
     def visualize(self, state):
         """
@@ -121,6 +154,7 @@ class HopfieldNetwork:
         self.state = state
         for neuron in self.neurons:
             neuron.state[0] = state[neuron.i, neuron.j]
+        #self.energy = self.get_energy(self.state)
 
 
     def set_state_from_neurons(self):
@@ -188,19 +222,19 @@ class Neuron(nn.Module):
 
         self.network = network
         self.state = Tensor([0])
-        self.bias = torch.Tensor([0])
 
 
     def activation_fn(self):
         total = 0
-        bias_i = self.bias
         for neuron in self.network.neurons:
-            if not neuron is self:
-                state_j = neuron.state
-                weight_ij = torch.unsqueeze(self.network.weights[self.n, neuron.n], 0)
-                total += torch.matmul(weight_ij, state_j) + bias_i
+            if neuron is not self:
+                if neuron.state[0] == 1:
+                    # if neuron state is one the product of weight and state will be the weight_ij
+                    total += self.network.weights[self.n, neuron.n]
+                else:
+                    # if neuron state is one the product of weight and state will be the negative weight_ij
+                    total -= self.network.weights[self.n, neuron.n]
         return total
-
 
     def update(self):
         if self.activation_fn() >= 0:
@@ -208,9 +242,43 @@ class Neuron(nn.Module):
         else:
             self.state[0] = -1
 
-    def __repr__(self):
-        return f"Neuron {self.i} {self.j} with state: {self.state[0]}"
+    def can_update(self):
+        if self.activation_fn() >= 0:
+            proper_state = 1
+        else:
+            proper_state = -1
+        if self.state[0] != proper_state:
+            return True
+        else:
+            return False
 
+class IterNeurons:
+    def __init__(self, lst):
+        self.lst = lst
+        self.i = 0
+        self.j = 0
+        self.stop = len(lst) - 1
+        self.shown = {}
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        i, j = self.i, self.j
+        if i == self.stop and j == self.stop:
+            raise StopIteration
+
+        if j < self.stop:
+            self.j += 1
+        if j == self.stop:
+            self.j = 0
+            self.i += 1
+
+        if (i, j) in self.shown or i == j:
+            return self.__next__()
+        else:
+            self.shown[(j, i)] = None
+            return self.lst[i], self.lst[j]
 
 if __name__ == '__main__':
     nn = HopfieldNetwork(25)

@@ -9,5 +9,6 @@ logger.setLevel(logging.DEBUG)
 
 
 if __name__ == '__main__':
+    logger.info("starting")
     gui = GUI()
     logger.info("exiting.")
