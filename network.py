@@ -108,7 +108,7 @@ class HopfieldNetwork:
         logger.debug("Starting to solve network.")
         start = time.time()
         while True:
-            self.run(100)
+            self.run(self.n_neurons)
             if self.is_in_local_minima():
                 break
         self.set_state_from_neurons()

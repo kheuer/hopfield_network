@@ -73,10 +73,10 @@ class GUI:
 
         models_frame = Frame(pattern_frame)
         models_frame.pack()
-        save_model1_btn = Button(models_frame, text="Load model ABC", width=27, height=3,
+        save_model1_btn = Button(models_frame, text="Load model AB", width=27, height=3,
                                  command=partial(self.network_action, self.load_model, 1))
         save_model1_btn.grid(row=0, column=0)
-        save_model2_btn = Button(models_frame, text="Load model ABCCCC", width=27, height=3,
+        save_model2_btn = Button(models_frame, text="Load model ABC", width=27, height=3,
                                  command=partial(self.network_action, self.load_model, 2))
         save_model2_btn.grid(row=0, column=1)
         save_model3_btn = Button(models_frame, text="Load model alphabet", width=27, height=3,
@@ -242,12 +242,12 @@ class GUI:
 
     def load_model(self, number):
         if number == 1:
-            logger.debug("Loaded Model 'ABC'")
-            for ch in list("ABC"):
+            logger.debug("Loaded Model 'AB'")
+            for ch in list("AB"):
                 self.save_pattern(ch)
         elif number == 2:
-            logger.debug("Loaded Model 'ABCCCC'")
-            for ch in list("ABCCCC"):
+            logger.debug("Loaded Model 'ABC'")
+            for ch in list("ABC"):
                 self.save_pattern(ch)
         elif number == 3:
             logger.debug("Loaded Model 'Alphabet'")
