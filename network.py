@@ -43,12 +43,15 @@ class HopfieldNetwork:
         self.set_random_state()
 
         self.weights = torch.zeros([self.n_neurons, self.n_neurons])
-        #self.energy = self.get_energy(self.state)
+        self.energy = self.get_energy()
 
         logger.info(f"Initialized Hopfield network of size {self.size} with {self.n_neurons} Neurons")
 
-    def get_energy(self, pattern):
-        start = time.time()
+    def get_energy(self, pattern=None):
+        pattern_desc = "Manual"
+        if pattern is None:
+            pattern = self.state
+            pattern_desc = "State"
         energy = 0
         for neuron_i, neuron_j in IterNeurons(self.neurons):
             if neuron_i.state == neuron_j.state:
@@ -58,6 +61,7 @@ class HopfieldNetwork:
         energy *= -1
         energy -= torch.sum(pattern)
         # TODO: Why is this positive?
+        logger.debug(f"{pattern_desc} Pattern Energy: {energy}")
         return energy
 
     def visualize_weight_matrix(self):
@@ -76,10 +80,11 @@ class HopfieldNetwork:
             hebbian_sum = 0
             for pattern in self.patterns:
                 hebbian_sum += pattern[neuron_i.i, neuron_i.j] * pattern[neuron_j.i, neuron_j.j]
-            hebbian_weight = hebbian_sum / len(self.patterns)
+            hebbian_weight = (hebbian_sum * 2) / len(self.patterns)
             self.weights[neuron_i.n, neuron_j.n], self.weights[neuron_j.n, neuron_i.n] = hebbian_weight, hebbian_weight
+        self.set_state_from_neurons()
         logger.debug(f"Finished training in {int(time.time()- start)} seconds.")
-        #self.energy = self.get_energy(self.state)
+        self.energy = self.get_energy()
 
     def add_pattern(self, pattern):
         """
@@ -101,8 +106,8 @@ class HopfieldNetwork:
         for i in range(steps):
             neuron = np.random.choice(self.neurons)
             neuron.update()
-        logger.debug(f"Finished update in {int(time.time()- start)} seconds.")
-        #self.energy = self.get_energy(self.state)
+        logger.debug(f"Finished network update in {int(time.time()- start)} seconds.")
+        self.energy = self.get_energy()
 
     def solve(self):
         logger.debug("Starting to solve network.")
@@ -154,7 +159,6 @@ class HopfieldNetwork:
         self.state = state
         for neuron in self.neurons:
             neuron.state[0] = state[neuron.i, neuron.j]
-        #self.energy = self.get_energy(self.state)
 
 
     def set_state_from_neurons(self):
@@ -228,7 +232,7 @@ class Neuron(nn.Module):
         total = 0
         for neuron in self.network.neurons:
             if neuron is not self:
-                if neuron.state[0] == 1:
+                if neuron.state == 1:
                     # if neuron state is one the product of weight and state will be the weight_ij
                     total += self.network.weights[self.n, neuron.n]
                 else:
