@@ -1,4 +1,6 @@
 import torch
+import torchvision
+from torchvision.datasets import USPS
 from torch import Tensor, nn
 import numpy as np
 import matplotlib.pyplot as plt
@@ -44,7 +46,7 @@ class HopfieldNetwork:
 
         self.weights = torch.zeros([self.n_neurons, self.n_neurons])
         self.energy = self.get_energy()
-
+        self.dataset = torchvision.datasets.MNIST('/files/', train=True, download=True)
         logger.info(f"Initialized Hopfield network of size {self.size} with {self.n_neurons} Neurons")
 
     def get_energy(self, pattern=None):
@@ -93,7 +95,7 @@ class HopfieldNetwork:
         :param pattern: torch.Tensor of pattern
         :return: None
         """
-        self.patterns.append(pattern)
+        self.patterns.append(pattern.float())
 
     def run(self, steps):
         """
@@ -108,6 +110,19 @@ class HopfieldNetwork:
             neuron.update()
         logger.debug(f"Finished network update in {int(time.time()- start)} seconds.")
         self.energy = self.get_energy()
+
+    def pattern_is_saved(self, pattern):
+        for saved_pattern in self.patterns:
+            if torch.equal(pattern, saved_pattern):
+                return True
+        return False
+
+    def get_pattern_index(self, pattern):
+        for i, saved_pattern in enumerate(self.patterns):
+            if torch.equal(pattern.float(), saved_pattern.float()):
+                return i
+        raise ValueError("Pattern is not saved.")
+
 
     def solve(self):
         logger.debug("Starting to solve network.")
@@ -156,9 +171,10 @@ class HopfieldNetwork:
         :param state: torch.Tensor
         :return: None
         """
-        self.state = state
+        self.state = state.float()
         for neuron in self.neurons:
             neuron.state[0] = state[neuron.i, neuron.j]
+
 
 
     def set_state_from_neurons(self):
@@ -169,6 +185,7 @@ class HopfieldNetwork:
         """
         for neuron in self.neurons:
             self.state[neuron.i, neuron.j] = neuron.state[0]
+        self.state = self.state.float()
 
     def set_random_state(self):
         """
@@ -188,31 +205,20 @@ class HopfieldNetwork:
         """
         return self.visualize(self.patterns[i])
 
-    def create_pattern(self, char, size=None):
+    def create_pattern(self, number):
         """
         Get a pattern representing the binary states of each neuron in the network.
 
-        :param char: str string to represent
-        :param size: int size of the font, leave empty to auto fit
+        :param number: int number to represent.
         :return: torch.Tensor
         """
-        if size is None:
-            size = self.size[0]
-        # create font
-        pil_font = ImageFont.truetype("arial.ttf", size=size // len(char), encoding="unic")
-        text_width, text_height = pil_font.getsize(char)
-
-        # create a blank canvas with extra space between lines
-        canvas = Image.new("RGB", [size, size], (255, 255, 255))
-
-        # draw the text onto the canvas
-        draw = ImageDraw.Draw(canvas)
-        offset = ((size - text_width) // 2,
-                  (size - text_height) // 2)
-        draw.text(offset, char, font=pil_font, fill="#000000")
-
-        # Convert the canvas into an array with values in [0, 1]
-        array = ((255 - np.asarray(canvas)) / 255.0)[:, :, 0].round()
+        while True:
+            img, n = self.dataset[np.random.randint(len(self.dataset))]
+            if n == number:
+                break
+        img = img.resize(self.size)
+        array = np.asarray(img)
+        array = np.round(array / 255)
         tensor = torch.from_numpy(array)
         tensor[tensor == 0] = -1  # replace 0 by -1
         return tensor

@@ -13,6 +13,8 @@ from functools import partial
 import logging
 import time
 
+
+
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
@@ -54,38 +56,47 @@ class GUI:
 
         pattern_frame = Frame(self.control_menu)
         pattern_frame.pack()
-        save_random_pattern = Button(pattern_frame, text="Save random pattern", width=55, height=3,
-                                     command=partial(self.network_action, self.save_pattern, "random"))
-        save_random_pattern.pack()
 
         chr_save_frame = Frame(pattern_frame)
         chr_save_frame.pack()
         ch_selection_frame = Frame(chr_save_frame)
         ch_selection_frame.grid(row=0, column=1)
         self.ch_selection = Entry(ch_selection_frame)
-        self.ch_selection.insert(-1, "A")
+        self.ch_selection.insert(-1, "1")
         self.ch_selection.pack()
-        ch_selection_label = Label(ch_selection_frame, text="Insert Character")
+        ch_selection_label = Label(ch_selection_frame, text="Insert Number")
         ch_selection_label.pack()
-        train_pattern_btn = Button(chr_save_frame, text="Save Character to Network", width=35, height=3,
-                                   command=partial(self.network_action, partial(self.save_pattern, "character")))
+        train_pattern_btn = Button(chr_save_frame, text="Save Number to Network", width=35, height=3,
+                                   command=partial(self.network_action, partial(self.save_pattern, "number")))
         train_pattern_btn.grid(row=0, column=0)
 
         models_frame = Frame(pattern_frame)
         models_frame.pack()
-        save_model1_btn = Button(models_frame, text="Load model AB", width=27, height=3,
-                                 command=partial(self.network_action, self.load_model, 1))
+        save_model1_btn = Button(models_frame, text="Load model 1/2", width=27, height=3,
+                                 command=partial(self.network_action, self.load_model, "1/2"))
         save_model1_btn.grid(row=0, column=0)
-        save_model2_btn = Button(models_frame, text="Load model ABC", width=27, height=3,
-                                 command=partial(self.network_action, self.load_model, 2))
+        save_model2_btn = Button(models_frame, text="Load model 1/5/8", width=27, height=3,
+                                 command=partial(self.network_action, self.load_model, "1/5/8"))
         save_model2_btn.grid(row=0, column=1)
-        save_model3_btn = Button(models_frame, text="Load model alphabet", width=27, height=3,
-                                 command=partial(self.network_action, self.load_model, 3))
-        save_model3_btn.grid(row=1, column=0)
+
+        save_n_random_patterns_frame = Frame(pattern_frame)
+        save_n_random_patterns_frame.pack()
+        n_patterns_frame = Frame(save_n_random_patterns_frame)
+        n_patterns_frame.grid(row=0, column=1)
+        self.n_patterns_field = Entry(n_patterns_frame)
+        self.n_patterns_field.insert(-1, 1)
+        self.n_patterns_field.pack()
+        n_patterns_label = Label(n_patterns_frame, text="Number of Patterns")
+        n_patterns_label.pack()
+        save_random_pattern_btn = Button(save_n_random_patterns_frame, text="Save random pattern", width=35, height=3,
+                                     command=partial(self.network_action, self.load_model, "n_random"))
+        save_random_pattern_btn.grid(row=0, column=0)
+
+
 
         advance_network_frame = Frame(self.control_menu)
         advance_network_frame.pack()
-        advance_network_1_btn = Button(advance_network_frame, text="Advance 100 Step", width=27, height=3,
+        advance_network_1_btn = Button(advance_network_frame, text="Advance 100 Steps", width=27, height=3,
                                  command=partial(self.network_action, self.advance_model, 100))
         advance_network_1_btn.grid(row=0, column=0)
         advance_network_10_btn = Button(advance_network_frame, text="Solve model", width=27, height=3,
@@ -97,7 +108,7 @@ class GUI:
         n_steps_frame = Frame(advance_network_n_frame)
         n_steps_frame.grid(row=0, column=1)
         n_steps_field = Entry(n_steps_frame)
-        n_steps_field.insert(-1, 1000)
+        n_steps_field.insert(-1, self.network.n_neurons)
         n_steps_field.pack()
         n_steps_label = Label(n_steps_frame, text="Number of Steps")
         n_steps_label.pack()
@@ -109,7 +120,7 @@ class GUI:
 
         # current
         self.state_desc = StringVar()
-        self.state_desc.set(f"Current Network state")
+        self.set_network_desc()
         current_state_label = Label(self.current_menu, textvariable=self.state_desc)
         current_state_label.grid(row=0, column=0)
         placeholder_fig_state = Figure(figsize=(3, 3), dpi=100)
@@ -155,6 +166,20 @@ class GUI:
 
         self.network_action(lambda: None)
         self.root.mainloop()
+
+    def set_network_desc(self):
+        is_stable = self.network.is_in_local_minima()
+        stable_desc = {True: "Stable", False: "Unstable"}[is_stable]
+        is_saved = self.network.pattern_is_saved(self.network.state)
+        saved_desc = {True: "Saved", False: "not Saved"}[is_saved]
+        if is_saved:
+            index = self.network.get_pattern_index(self.network.state)
+            pattern_number = index + 1
+        else:
+            pattern_number = "n/a"
+
+        self.state_desc.set(f"Current Network state ({stable_desc}) \nPattern is {saved_desc} \nPattern Number: {pattern_number}")
+
 
     def get_numeric_input(self, field):
         val = field.get()
@@ -206,8 +231,8 @@ class GUI:
                 state = self.network.get_random_state()
             elif state == "empty":
                 state = np.zeros(self.network.size)
-            elif state == "character":
-                state = self.network.create_pattern(self.get_character_input(self.ch_selection))
+            elif state == "number":
+                state = self.network.create_pattern(self.get_numeric_input(self.ch_selection))
             elif state == "current":
                 if not self.network.patterns:
                     logger.warning("You must train at least one state first.")
@@ -221,8 +246,10 @@ class GUI:
                         if np.random.random() < 0.05:
                             current[i, j] = 0 - current[i, j]
                 state = current
-            elif len(state) == 1:   # is string of a single character that should be represented
-                state = self.network.create_pattern(state)
+
+            elif len(state) == 1:   # is string of a single number that should be represented
+                state = self.network.create_pattern(int(state))
+
         return state.clone()    # return deep copy to avoid unexpected side effects
 
     def advance_model(self, steps):
@@ -237,22 +264,21 @@ class GUI:
     def save_pattern(self, pattern):
         state = self.translate_state(pattern)
         self.network.add_pattern(state)
-        if pattern == "character":
+        if pattern in ["number"]:
             self.network.train()
 
-    def load_model(self, number):
-        if number == 1:
-            logger.debug("Loaded Model 'AB'")
-            for ch in list("AB"):
+    def load_model(self, model_desc):
+        if model_desc == "1/2":
+            for ch in ["1", "2"]:
                 self.save_pattern(ch)
-        elif number == 2:
-            logger.debug("Loaded Model 'ABC'")
-            for ch in list("ABC"):
+            logger.debug("Loaded Model '1/2'")
+        elif model_desc == "1/5/8":
+            for ch in ["1", "5", "8"]:
                 self.save_pattern(ch)
-        elif number == 3:
-            logger.debug("Loaded Model 'Alphabet'")
-            for ch in list("abcdefghijklmnopqrstuvwxyzäöü"):
-                self.save_pattern(ch)
+            logger.debug("Loaded Model '1/5/8'")
+        elif model_desc == "n_random":
+            for i in range(self.get_numeric_input(self.n_patterns_field)):
+                self.save_pattern("random")
         self.network.train()
 
     def visualize_weight_matrix(self):
@@ -277,6 +303,7 @@ class GUI:
         action(*args, **kwargs)
         self.visualize_network()
         self.change_pattern(0)
+        self.set_network_desc()
 
     def solve_network(self):
         self.network.solve()
