@@ -16,6 +16,8 @@ logging.basicConfig(level=logging.NOTSET)
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
+dataset = torchvision.datasets.MNIST('/files/', train=True, download=True)
+
 class HopfieldNetwork:
     def __init__(self, n_neurons):
         """
@@ -46,7 +48,6 @@ class HopfieldNetwork:
 
         self.weights = torch.zeros([self.n_neurons, self.n_neurons])
         self.energy = self.get_energy()
-        self.dataset = torchvision.datasets.MNIST('/files/', train=True, download=True)
         logger.info(f"Initialized Hopfield network of size {self.size} with {self.n_neurons} Neurons")
 
     def get_energy(self, pattern=None):
@@ -213,7 +214,7 @@ class HopfieldNetwork:
         :return: torch.Tensor
         """
         while True:
-            img, n = self.dataset[np.random.randint(len(self.dataset))]
+            img, n = dataset[np.random.randint(len(dataset))]
             if n == number:
                 break
         img = img.resize(self.size)
