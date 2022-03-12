@@ -113,12 +113,23 @@ class HopfieldNetwork:
         self.energy = self.get_energy()
 
     def pattern_is_saved(self, pattern):
+        """
+        Determine whether a pattern is saved in the network.
+
+        :param pattern: Pytorch Tensor symbolizing state.
+        :return: Boolean, True if pattern is saved, False if not
+        """
         for saved_pattern in self.patterns:
             if torch.equal(pattern, saved_pattern):
                 return True
         return False
 
     def get_pattern_index(self, pattern):
+        """
+
+        :param pattern: Pytorch Tensor that is stored in the network.
+        :return: int, index of the pattern
+        """
         for i, saved_pattern in enumerate(self.patterns):
             if torch.equal(pattern.float(), saved_pattern.float()):
                 return i
@@ -126,6 +137,11 @@ class HopfieldNetwork:
 
 
     def solve(self):
+        """
+        Advance the network until it cannot advance any further.
+
+        :return: None
+        """
         logger.debug("Starting to solve network.")
         start = time.time()
         while True:
@@ -136,6 +152,11 @@ class HopfieldNetwork:
         logger.debug(f"Solved network in {int(time.time() - start)} seconds.")
 
     def is_in_local_minima(self):
+        """
+        Determine wether the current state of the network can be left.
+
+        :return: boolean, True if the network is in a minima, False if not
+        """
         for neuron in self.neurons:
             if neuron.can_update():
                 return False
@@ -236,6 +257,11 @@ class Neuron(nn.Module):
 
 
     def activation_fn(self):
+        """
+        Activation function of a McCulloch-Pitts-Neuron in the Hopfield Network.
+
+        :return: Strength of input into Neuron
+        """
         total = 0
         for neuron in self.network.neurons:
             if neuron is not self:
@@ -248,12 +274,22 @@ class Neuron(nn.Module):
         return total
 
     def update(self):
+        """
+        Update Neuron
+
+        :return: None
+        """
         if self.activation_fn() >= 0:
             self.state[0] = 1
         else:
             self.state[0] = -1
 
     def can_update(self):
+        """
+        Determine whether the neuron can update.
+
+        :return: True if Neuron can update, False if not
+        """
         if self.activation_fn() >= 0:
             proper_state = 1
         else:
@@ -264,6 +300,9 @@ class Neuron(nn.Module):
             return False
 
 class IterNeurons:
+    """
+    Helper class to iterate through all neurons in a list paired with every other one once.
+    """
     def __init__(self, lst):
         self.lst = lst
         self.i = 0
@@ -290,8 +329,4 @@ class IterNeurons:
         else:
             self.shown[(j, i)] = None
             return self.lst[i], self.lst[j]
-
-if __name__ == '__main__':
-    nn = HopfieldNetwork(25)
-    nn.visualize_weight_matrix()
 
