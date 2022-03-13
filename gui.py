@@ -96,12 +96,17 @@ class GUI:
 
         advance_network_frame = Frame(self.control_menu)
         advance_network_frame.pack()
-        advance_network_1_btn = Button(advance_network_frame, text="Advance 100 Steps", width=27, height=3,
+        advance_network_1_btn = Button(advance_network_frame, text="Advance 100 Steps", width=18, height=3,
                                  command=partial(self.network_action, self.advance_model, 100))
         advance_network_1_btn.grid(row=0, column=0)
-        advance_network_10_btn = Button(advance_network_frame, text="Solve model", width=27, height=3,
+
+        make_one_change_btn = Button(advance_network_frame, text="Make one change", width=18, height=3,
+               command=partial(self.network_action, self.make_one_change))
+        make_one_change_btn.grid(row=0, column=1)
+
+        solve_network_btn = Button(advance_network_frame, text="Solve model", width=18, height=3,
                                        command=partial(self.network_action, self.solve_network))
-        advance_network_10_btn.grid(row=0, column=1)
+        solve_network_btn.grid(row=0, column=2)
 
         advance_network_n_frame = Frame(self.control_menu)
         advance_network_n_frame.pack()
@@ -304,6 +309,9 @@ class GUI:
         self.visualize_network()
         self.change_pattern(0)
         self.set_network_desc()
+
+    def make_one_change(self):
+        self.network.make_n_changes(1)
 
     def solve_network(self):
         self.network.solve()

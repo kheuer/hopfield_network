@@ -140,6 +140,32 @@ class HopfieldNetwork:
                 return i
         raise ValueError("Pattern is not saved.")
 
+    def make_n_changes(self, n):
+        """
+        Make n changes to the network. (Different to run because only updates are counted)
+
+        :param n: N changes the network should undertake.
+        :return: None
+        :raise: RuntimeError if n_changes are not possible
+        """
+        if self.is_in_local_minima():
+            self.set_state_from_neurons()
+            print("Network is already in local minima")
+            return
+        start = time.time()
+        changes_made = 0
+        while True:
+            neuron = np.random.choice(self.neurons)
+            if neuron.can_update():
+                neuron.update()
+                changes_made += 1
+                if changes_made == n:
+                    break
+                elif self.is_in_local_minima():
+                    self.set_state_from_neurons()
+                    raise RuntimeError("Network is already in local minima.")
+        self.set_state_from_neurons()
+        logger.debug(f"Made {changes_made} updates in {int(time.time()-start)} seconds.")
 
     def solve(self):
         """
