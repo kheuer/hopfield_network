@@ -20,7 +20,7 @@ logger.setLevel(logging.DEBUG)
 dataset = torchvision.datasets.MNIST(os.getcwd() + "/files/MNIST/", train=True, download=True)
 
 class HopfieldNetwork:
-    def __init__(self, n_neurons, testing=False):
+    def __init__(self, n_neurons, updating_type="replace", testing=False):
         """
         Initialize a Hopfield Network with a quadratic shape of (n_neurons**0.5, n_neurons**0.5)
 
@@ -28,6 +28,11 @@ class HopfieldNetwork:
                         Full functionality. If True, energy will not be calculated at update.
         :param n_neurons: The number of neurons the network should have.
         """
+        if updating_type == "replace":
+            self.replace = True
+        elif updating_type == "no_replace":
+            self.replace = False
+
         if n_neurons < 4:
             raise ValueError(f"n_neurons provided is: {n_neurons} but must be at least 4")
         sqrt = np.sqrt(n_neurons)
@@ -106,7 +111,23 @@ class HopfieldNetwork:
         self.patterns.append(pattern.float())
         self.train()
 
-    def run(self, steps):
+    def run_with_replacement(self, steps):
+        """
+        Run the network for n steps.
+        This is performed by choosing n neurons with replacement and updating them.
+
+        :param steps: int describing how many neurons should be given the chance to update
+        :return: None
+        """
+        start = time.time()
+        for i in range(steps):
+            neuron = np.random.choice(self.neurons)
+            neuron.update()
+        logger.debug(f"Finished network update with replacement in {int(time.time() - start)} seconds.")
+        if not self.testing:
+            self.energy = self.get_energy()
+
+    def run_without_replacement(self, steps):
         """
         Run the network for n steps.
         This is performed by choosing n neurons without replacement and updating them.
@@ -123,6 +144,19 @@ class HopfieldNetwork:
         logger.debug(f"Finished network update without replacement in {int(time.time() - start)} seconds.")
         if not self.testing:
             self.energy = self.get_energy()
+
+    def run(self, steps):
+        """
+        Call run function according to neuron sampling type.
+
+        :param steps: int describing how many neurons should be given the chance to update
+        :return: None
+        """
+        if self.replace:
+            self.run_with_replacement(steps)
+        else:
+            self.run_without_replacement(steps)
+
 
     def pattern_is_saved(self, pattern):
         """
