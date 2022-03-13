@@ -72,11 +72,11 @@ class GUI:
 
         models_frame = Frame(pattern_frame)
         models_frame.pack()
-        save_model1_btn = Button(models_frame, text="Load model 1/2", width=27, height=3,
-                                 command=partial(self.network_action, self.load_model, "1/2"))
+        save_model1_btn = Button(models_frame, text="Load model 1/2/3", width=27, height=3,
+                                 command=partial(self.network_action, self.load_model, "1/2/3"))
         save_model1_btn.grid(row=0, column=0)
-        save_model2_btn = Button(models_frame, text="Load model 1/5/8", width=27, height=3,
-                                 command=partial(self.network_action, self.load_model, "1/5/8"))
+        save_model2_btn = Button(models_frame, text="Load model 1-9", width=27, height=3,
+                                 command=partial(self.network_action, self.load_model, "1/2/3/4/5/6/7/8/9"))
         save_model2_btn.grid(row=0, column=1)
 
         save_n_random_patterns_frame = Frame(pattern_frame)
@@ -269,22 +269,19 @@ class GUI:
     def save_pattern(self, pattern):
         state = self.translate_state(pattern)
         self.network.add_pattern(state)
-        if pattern in ["number"]:
-            self.network.train()
 
     def load_model(self, model_desc):
-        if model_desc == "1/2":
-            for ch in ["1", "2"]:
+        if model_desc == "1/2/3":
+            for ch in ["1", "2", "3"]:
                 self.save_pattern(ch)
-            logger.debug("Loaded Model '1/2'")
-        elif model_desc == "1/5/8":
-            for ch in ["1", "5", "8"]:
+            logger.debug("Loaded Model '1/2/3'")
+        elif model_desc == "1/2/3/4/5/6/7/8/9":
+            for ch in ["1", "2", "3", "4", "5", "6", "7", "8", "9"]:
                 self.save_pattern(ch)
-            logger.debug("Loaded Model '1/5/8'")
+            logger.debug("Loaded Model '1/2/3/4/5/6/7/8/9'")
         elif model_desc == "n_random":
             for i in range(self.get_numeric_input(self.n_patterns_field)):
                 self.save_pattern("random")
-        self.network.train()
 
     def visualize_weight_matrix(self):
         self.network.visualize_weight_matrix()
