@@ -93,9 +93,8 @@ class HopfieldNetwork:
             hebbian_sum = 0
             for pattern in self.patterns:
                 hebbian_sum += pattern[neuron_i.i, neuron_i.j] * pattern[neuron_j.i, neuron_j.j]
-            hebbian_weight = (hebbian_sum * 2) / len(self.patterns)
-            self.weights[neuron_i.n, neuron_j.n] += hebbian_weight
-            self.weights[neuron_j.n, neuron_i.n] += hebbian_weight
+            hebbian_weight = hebbian_sum / len(self.patterns)
+            self.weights[neuron_i.n, neuron_j.n], self.weights[neuron_j.n, neuron_i.n] = hebbian_weight, hebbian_weight
         self.set_state_from_neurons()
         logger.debug(f"Finished training in {int(time.time()- start)} seconds.")
         if not self.testing:
