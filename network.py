@@ -113,12 +113,9 @@ class HopfieldNetwork:
         :return: None
         """
         start = time.time()
-        choices = list(np.arange(steps))
-        while choices:
-            i = np.random.choice(choices)
-            choices.remove(i)
-            neuron = self.neurons[i]
-            neuron.update()
+
+        for i in sorted(np.arange(steps), key=lambda k: np.random.random()):
+            self.neurons[i].update()
         logger.debug(f"Finished network update without replacement in {int(time.time() - start)} seconds.")
         if not self.testing:
             self.energy = self.get_energy()
