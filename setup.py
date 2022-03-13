@@ -1,5 +1,5 @@
 import torchvision
-from torchvision.datasets import USPS
+import os
 
 if __name__ == '__main__':
-    dataset = torchvision.datasets.MNIST('/data/', download=True)
+    dataset = torchvision.datasets.MNIST(os.getcwd() + "/files/MNIST/", download=True)

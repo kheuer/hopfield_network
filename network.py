@@ -9,6 +9,7 @@ from matplotlib.figure import Figure
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
 from PIL import Image, ImageDraw, ImageFont
 import time
+import os
 
 import logging
 logging.basicConfig()
@@ -16,7 +17,7 @@ logging.basicConfig(level=logging.NOTSET)
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
-dataset = torchvision.datasets.MNIST('/files/', train=True, download=True)
+dataset = torchvision.datasets.MNIST(os.getcwd() + "/files/MNIST/", train=True, download=True)
 
 class HopfieldNetwork:
     def __init__(self, n_neurons, testing=False):
