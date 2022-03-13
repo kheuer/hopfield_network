@@ -92,7 +92,8 @@ class HopfieldNetwork:
             self.weights[neuron_i.n, neuron_j.n], self.weights[neuron_j.n, neuron_i.n] = hebbian_weight, hebbian_weight
         self.set_state_from_neurons()
         logger.debug(f"Finished training in {int(time.time()- start)} seconds.")
-        self.energy = self.get_energy()
+        if not self.testing:
+            self.energy = self.get_energy()
 
     def add_pattern(self, pattern):
         """
@@ -106,15 +107,19 @@ class HopfieldNetwork:
     def run(self, steps):
         """
         Run the network for n steps.
+        This is performed by choosing n neurons without replacement and updating them.
 
-        :param steps: int describing how often a neuron should be given the chance to update
+        :param steps: int describing how many neurons should be given the chance to update
         :return: None
         """
         start = time.time()
-        for i in range(steps):
-            neuron = np.random.choice(self.neurons)
+        choices = list(np.arange(steps))
+        while choices:
+            i = np.random.choice(choices)
+            choices.remove(i)
+            neuron = self.neurons[i]
             neuron.update()
-        logger.debug(f"Finished network update in {int(time.time()- start)} seconds.")
+        logger.debug(f"Finished network update without replacement in {int(time.time() - start)} seconds.")
         if not self.testing:
             self.energy = self.get_energy()
 
