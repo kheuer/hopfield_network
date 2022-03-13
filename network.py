@@ -117,6 +117,7 @@ class HopfieldNetwork:
         start = time.time()
         for i in sorted(np.arange(steps), key=lambda k: np.random.random()):
             while i >= self.n_neurons:
+                logger.debug(f"Changed index {i} to {i-self.n_neurons}")
                 i -= self.n_neurons
             self.neurons[i].update()
         logger.debug(f"Finished network update without replacement in {int(time.time() - start)} seconds.")
