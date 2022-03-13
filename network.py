@@ -19,10 +19,12 @@ logger.setLevel(logging.DEBUG)
 dataset = torchvision.datasets.MNIST('/files/', train=True, download=True)
 
 class HopfieldNetwork:
-    def __init__(self, n_neurons):
+    def __init__(self, n_neurons, testing=False):
         """
         Initialize a Hopfield Network with a quadratic shape of (n_neurons**0.5, n_neurons**0.5)
 
+        :param testing: Boolean, True if the instance is created to perform statistical modeling, False if used with
+                        Full functionality. If True, energy will not be calculated at update.
         :param n_neurons: The number of neurons the network should have.
         """
         if n_neurons < 4:
@@ -32,6 +34,7 @@ class HopfieldNetwork:
             raise ValueError(f"n_neurons provided is: {n_neurons} but must be divisible by itself to an int")
         if n_neurons < 100:
             logger.warning("We recommend to choose n_neurons to be >= 100 to ensure proper generation of characters.")
+        self.testing = testing
         self.n_neurons = n_neurons
         self.size = (int(sqrt), int(sqrt))
         self.patterns = []
@@ -47,7 +50,8 @@ class HopfieldNetwork:
         self.set_random_state()
 
         self.weights = torch.zeros([self.n_neurons, self.n_neurons])
-        self.energy = self.get_energy()
+        if not self.testing:
+            self.energy = self.get_energy()
         logger.info(f"Initialized Hopfield network of size {self.size} with {self.n_neurons} Neurons")
 
     def get_energy(self, pattern=None):
@@ -110,7 +114,8 @@ class HopfieldNetwork:
             neuron = np.random.choice(self.neurons)
             neuron.update()
         logger.debug(f"Finished network update in {int(time.time()- start)} seconds.")
-        self.energy = self.get_energy()
+        if not self.testing:
+            self.energy = self.get_energy()
 
     def pattern_is_saved(self, pattern):
         """
