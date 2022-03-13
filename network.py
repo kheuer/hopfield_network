@@ -26,12 +26,17 @@ class HopfieldNetwork:
 
         :param testing: Boolean, True if the instance is created to perform statistical modeling, False if used with
                         Full functionality. If True, energy will not be calculated at update.
+        :param updating_type: "replace" or "no_replace". Describes if updates should be performed with or
+                                without replacement
         :param n_neurons: The number of neurons the network should have.
+        :param testing: Boolean, True if using for testing/modeling, False if using for GUI
         """
         if updating_type == "replace":
             self.replace = True
         elif updating_type == "no_replace":
             self.replace = False
+        else:
+            raise ValueError("Unrecognized update type.")
 
         if n_neurons < 4:
             raise ValueError(f"n_neurons provided is: {n_neurons} but must be at least 4")
