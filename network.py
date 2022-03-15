@@ -79,7 +79,6 @@ class HopfieldNetwork:
                 energy -= self.weights[neuron_i.n, neuron_j.n]
         energy *= -1
         energy -= torch.sum(pattern)
-        # TODO: Why is this positive?
         logger.debug(f"{pattern_desc} Pattern Energy: {energy}")
         return energy
 
@@ -247,7 +246,7 @@ class HopfieldNetwork:
         """
         fig = Figure(figsize=(3, 3), dpi=100)
         plot = fig.add_subplot(111)
-        plot.imshow(state, cmap="Blues",  interpolation="nearest")  #TODO: Fix Bug where figure appears blanc when there is only one number in the tensor
+        plot.imshow(state, cmap="Blues",  interpolation="nearest")
         fig.axes[0].get_xaxis().set_visible(False)
         fig.axes[0].get_yaxis().set_visible(False)
         return fig
