@@ -5,7 +5,7 @@ logger = logging.getLogger(__name__)
 logging.basicConfig()
 logging.basicConfig(level=logging.NOTSET)
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
+logger.setLevel(logging.INFO)
 
 
 if __name__ == '__main__':

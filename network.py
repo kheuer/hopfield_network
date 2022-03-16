@@ -1,21 +1,17 @@
-import torch
-import torchvision
-from torchvision.datasets import USPS
-from torch import Tensor, nn
-import numpy as np
-import matplotlib.pyplot as plt
-import matplotlib.cm as cm
-from matplotlib.figure import Figure
-from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
-from PIL import Image, ImageDraw, ImageFont
 import time
 import os
+import numpy as np
+import torch
+import torchvision
+from torch import Tensor, nn
+import matplotlib.pyplot as plt
+from matplotlib.figure import Figure
 
 import logging
 logging.basicConfig()
 logging.basicConfig(level=logging.NOTSET)
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
+logger.setLevel(logging.INFO)
 
 dataset = torchvision.datasets.MNIST(os.getcwd() + "/files/MNIST/", train=True, download=True)
 
@@ -45,40 +41,41 @@ class HopfieldNetwork:
             raise ValueError(f"n_neurons provided is: {n_neurons} but must be divisible by itself to an int")
         if n_neurons < 100:
             logger.warning("We recommend to choose n_neurons to be >= 100 to ensure proper generation of characters.")
-        self.testing = testing
-        self.n_neurons = n_neurons
-        self.size = (int(sqrt), int(sqrt))
-        self.patterns = []
-        self.energies = []
-        self.state = None
-        self.neurons = []
-        self.weights = torch.zeros([self.n_neurons, self.n_neurons])
+        self.testing = testing                                          # boolean, only used internally
+        self.n_neurons = n_neurons                                      # number of neurons in the network
+        self.size = (int(sqrt), int(sqrt))                              # dimensions of the network
+        self.patterns = []                                              # store saved patterns in the network
+        self.state = None                                               # current network state
+        self.neurons = []                                               # store all neurons in the network
+        self.weights = torch.zeros([self.n_neurons, self.n_neurons])    # weight matrix
         n = 0
-        for i in range(self.size[0]):
+        for i in range(self.size[0]):                                   # initialize all neurons in the network
             for j in range(self.size[1]):
-                neuron = Neuron(self, (i,j), n)
+                neuron = Neuron(self, (i, j), n)
                 self.neurons.append(neuron)
                 n += 1
-        self.set_random_state()
+        self.set_random_state()                                         # Set a random network state initially
 
-        self.weights = torch.zeros([self.n_neurons, self.n_neurons])
-        if not self.testing:
+        if not self.testing:                                            # don´t calculate energy in testing mode to
+                                                                        # speed up calculations.
             self.energy = self.get_energy()
         logger.info(f"Initialized Hopfield network of size {self.size} with {self.n_neurons} Neurons")
 
-    def get_energy(self, pattern=None):
+    def get_energy(self, pattern=None):                                 # get networks current energy, this is not
+                                                                        # technically necessary but usefull for debuging
         pattern_desc = "Manual"
         if pattern is None:
             pattern = self.state
             pattern_desc = "State"
         energy = 0
-        for neuron_i, neuron_j in IterNeurons(self.neurons):
+        for neuron_i, neuron_j in IterNeurons(self.neurons):            # add the state multiplied by the weight between
+                                                                        # neurons to energy
             if neuron_i.state == neuron_j.state:
                 energy += self.weights[neuron_i.n, neuron_j.n]
             else:
                 energy -= self.weights[neuron_i.n, neuron_j.n]
-        energy *= -1
-        energy -= torch.sum(pattern)
+        energy *= -1                                                    # energy should be minimized
+        energy -= torch.sum(pattern)                                    # subtract patterns states from energy
         logger.debug(f"{pattern_desc} Pattern Energy: {energy}")
         return energy
 
@@ -93,12 +90,18 @@ class HopfieldNetwork:
         :return: None
         """
         start = time.time()
+        # iterate over every neuron paired with every other neuron once
         for neuron_i, neuron_j in IterNeurons(self.neurons):
             hebbian_sum = 0
+            # iterate over all saved patterns
             for pattern in self.patterns:
+                # add neurons state in pattern of both neurons multiplied with each other
                 hebbian_sum += pattern[neuron_i.i, neuron_i.j] * pattern[neuron_j.i, neuron_j.j]
+            # the Hebbian weight is the average of all added products
             hebbian_weight = hebbian_sum / len(self.patterns)
+            # set Hebbian weight as the weight between the neurons
             self.weights[neuron_i.n, neuron_j.n], self.weights[neuron_j.n, neuron_i.n] = hebbian_weight, hebbian_weight
+        # set network state from the neuron instances
         self.set_state_from_neurons()
         logger.debug(f"Finished training in {int(time.time()- start)} seconds.")
         if not self.testing:
@@ -123,8 +126,8 @@ class HopfieldNetwork:
         :return: None
         """
         start = time.time()
-        for i in range(steps):
-            neuron = np.random.choice(self.neurons)
+        for i in range(steps):                                          # iterate n times
+            neuron = np.random.choice(self.neurons)                     # choose a random neuron with replacement
             neuron.update()
         logger.debug(f"Finished network update with replacement in {int(time.time() - start)} seconds.")
         if not self.testing:
@@ -138,14 +141,18 @@ class HopfieldNetwork:
         :param steps: int describing how many neurons should be given the chance to update
         :return: None
         """
-        if steps < self.n_neurons:
-            logger.warning(f"Please choose at least n_neurons={self.n_neurons} steps.")
         start = time.time()
-        for i in sorted(np.arange(steps), key=lambda k: np.random.random()):
-            while i >= self.n_neurons:
-                logger.debug(f"Changed index {i} to {i-self.n_neurons}")
-                i -= self.n_neurons
-            self.neurons[i].update()
+        if steps < self.n_neurons:                                      # if steps is less than number of neurons we
+                                                                        # must choose a random subsample
+            indices = np.random.choice(range(len(self.neurons)), steps, replace=False)      # get random indices
+        else:
+            indices = sorted(np.arange(steps), key=lambda k: np.random.random())            # get random indices
+        for i in indices:
+            update_i = i
+            while update_i >= self.n_neurons:   # reduce indices that are higher than the number of neurons
+                logger.debug(f"Changed index {update_i} to {update_i-self.n_neurons}")
+                update_i -= self.n_neurons
+            self.neurons[update_i].update()     # update the i´th neuron
         logger.debug(f"Finished network update without replacement in {int(time.time() - start)} seconds.")
         if not self.testing:
             self.energy = self.get_energy()
@@ -157,7 +164,7 @@ class HopfieldNetwork:
         :param steps: int describing how many neurons should be given the chance to update
         :return: None
         """
-        if self.replace:
+        if self.replace:                        # call run function based on network update type
             self.run_with_replacement(steps)
         else:
             self.run_without_replacement(steps)
@@ -171,7 +178,7 @@ class HopfieldNetwork:
         :return: Boolean, True if pattern is saved, False if not
         """
         for saved_pattern in self.patterns:
-            if torch.equal(pattern, saved_pattern):
+            if torch.equal(pattern, saved_pattern):     # compare if pattern is identical to requested pattern
                 return True
         return False
 
@@ -201,16 +208,16 @@ class HopfieldNetwork:
         start = time.time()
         changes_made = 0
         while True:
-            neuron = np.random.choice(self.neurons)
+            neuron = np.random.choice(self.neurons)     # choose random neuron with replacement
             if neuron.can_update():
-                neuron.update()
+                neuron.update()                         # update neuron if possible
                 changes_made += 1
-                if changes_made == n:
+                if changes_made == n:                   # stop when target number of changes has been reached
                     break
                 elif self.is_in_local_minima():
                     self.set_state_from_neurons()
-                    raise RuntimeError("Network is already in local minima.")
-        self.set_state_from_neurons()
+                    logger.info("Network is already in local minima.")
+        self.set_state_from_neurons()                   # set network state from neurons
         logger.debug(f"Made {changes_made} updates in {int(time.time()-start)} seconds.")
 
     def solve(self):
@@ -223,14 +230,14 @@ class HopfieldNetwork:
         start = time.time()
         while True:
             self.run(self.n_neurons)
-            if self.is_in_local_minima():
+            if self.is_in_local_minima():               # break loop when network is already in local minima
                 break
-        self.set_state_from_neurons()
+        self.set_state_from_neurons()                   # set network state from neuron instances
         logger.debug(f"Solved network in {int(time.time() - start)} seconds.")
 
     def is_in_local_minima(self):
         """
-        Determine wether the current state of the network can be left.
+        Determine whether the current state of the network can be left.
 
         :return: boolean, True if the network is in a minima, False if not
         """
@@ -260,7 +267,7 @@ class HopfieldNetwork:
         :return: torch.Tensor
         """
         tensor = torch.rand((self.size[0], self.size[1])).round()   # generate random tensor of 0´s and 1´s
-        tensor[tensor == 0] = -1  # replace 0 by -1
+        tensor[tensor == 0] = -1                                    # replace 0 by -1
         return tensor
 
     def set_state(self, state):
@@ -312,25 +319,25 @@ class HopfieldNetwork:
         :return: torch.Tensor
         """
         while True:
-            img, n = dataset[np.random.randint(len(dataset))]
-            if n == number:
+            img, n = dataset[np.random.randint(len(dataset))]       # draw a random pattern from the dataset
+            if n == number:                                         # stop drawing patterns when the pattern displays
+                                                                    # the requested number
                 break
-        img = img.resize(self.size)
-        array = np.asarray(img)
-        array = np.round(array / 255)
-        tensor = torch.from_numpy(array)
-        tensor[tensor == 0] = -1  # replace 0 by -1
+        img = img.resize(self.size)                                 # resize PIL image
+        array = np.asarray(img)                                     # transform PIL image to numpy array
+        array = np.round(array / 255)                               # represent dark pixels by 1 and light ones by -1
+        tensor = torch.from_numpy(array)                            # transform numpy array to pytorch tensor
+        tensor[tensor == 0] = -1                                    # replace 0 by -1
         return tensor
 
 class Neuron(nn.Module):
     def __init__(self, network, position, n):
         super(Neuron, self).__init__()
-        self.i = position[0]    # coordinates of the neuron in the network
-        self.j = position[1]
-        self.n = n
-
-        self.network = network
-        self.state = Tensor([0])
+        self.i = position[0]                                        # x coordinate of the neuron in the network
+        self.j = position[1]                                        # y coordinate of the neuron in the network
+        self.n = n                                                  # used like primary key to identify neuron
+        self.network = network                                      # reference to network where the neuron is located
+        self.state = Tensor([0])                                    # the state of the tensor
 
 
     def activation_fn(self):
@@ -341,7 +348,7 @@ class Neuron(nn.Module):
         """
         total = 0
         for neuron in self.network.neurons:
-            if neuron is not self:
+            if neuron is not self:                                  # iterate through all neurons but itself
                 if neuron.state == 1:
                     # if neuron state is one the product of weight and state will be the weight_ij
                     total += self.network.weights[self.n, neuron.n]
@@ -356,9 +363,9 @@ class Neuron(nn.Module):
 
         :return: None
         """
-        if self.activation_fn() >= 0:
+        if self.activation_fn() >= 0:                               # set state to 1 if activation function returns >= 0
             self.state[0] = 1
-        else:
+        else:                                                       # else set state to -1
             self.state[0] = -1
 
     def can_update(self):
@@ -371,7 +378,7 @@ class Neuron(nn.Module):
             proper_state = 1
         else:
             proper_state = -1
-        if self.state[0] != proper_state:
+        if self.state[0] != proper_state:       # neuron can update if its state is not the proper state
             return True
         else:
             return False

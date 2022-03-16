@@ -1,25 +1,17 @@
-import torch
-from torchvision import datasets
-from torchvision.transforms import Compose, ToTensor, Normalize
 import numpy as np
 import tkinter as tk
-from tkinter import Text, Label, Button, Frame, ttk, Entry, StringVar
-import matplotlib.pyplot as plt
-from matplotlib.figure import Figure
-from PIL import Image, ImageDraw, ImageFont
-from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
-from network import HopfieldNetwork
 from functools import partial
+from tkinter import Label, Button, Frame, ttk, Entry, StringVar
+from matplotlib.figure import Figure
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+from network import HopfieldNetwork
+
 import logging
-import time
-
-
 
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
+logger.setLevel(logging.INFO)
 
 default_n_neurons = 15 ** 2
-
 
 class GUI:
     def __init__(self):
