@@ -20,7 +20,7 @@ logger.setLevel(logging.DEBUG)
 dataset = torchvision.datasets.MNIST(os.getcwd() + "/files/MNIST/", train=True, download=True)
 
 class HopfieldNetwork:
-    def __init__(self, n_neurons, updating_type="replace", testing=False):
+    def __init__(self, n_neurons, updating_type="no_replace", testing=False):
         """
         Initialize a Hopfield Network with a quadratic shape of (n_neurons**0.5, n_neurons**0.5)
 
@@ -138,6 +138,8 @@ class HopfieldNetwork:
         :param steps: int describing how many neurons should be given the chance to update
         :return: None
         """
+        if steps < self.n_neurons:
+            logger.warning(f"Please choose at least n_neurons={self.n_neurons} steps.")
         start = time.time()
         for i in sorted(np.arange(steps), key=lambda k: np.random.random()):
             while i >= self.n_neurons:
@@ -194,7 +196,7 @@ class HopfieldNetwork:
         """
         if self.is_in_local_minima():
             self.set_state_from_neurons()
-            print("Network is already in local minima")
+            logger.info("Network is already in local minima")
             return
         start = time.time()
         changes_made = 0
