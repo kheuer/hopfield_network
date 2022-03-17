@@ -115,7 +115,6 @@ class HopfieldNetwork:
         :return: None
         """
         self.patterns.append(pattern.float())
-        self.train()
 
     def run_with_replacement(self, steps):
         """

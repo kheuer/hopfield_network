@@ -258,22 +258,26 @@ class GUI:
         state = self.translate_state(state)
         self.network.set_state(state)
 
-    def save_pattern(self, pattern):
+    def save_pattern(self, pattern, train=True):
         state = self.translate_state(pattern)
         self.network.add_pattern(state)
+        if train:
+            self.network.train()
+
 
     def load_model(self, model_desc):
         if model_desc == "1/2":
             for ch in ["1", "2"]:
-                self.save_pattern(ch)
+                self.save_pattern(ch, train=False)
             logger.debug("Loaded Model '1/2'")
         elif model_desc == "1/2/3":
             for ch in ["1", "2", "3"]:
-                self.save_pattern(ch)
+                self.save_pattern(ch, train=False)
             logger.debug("Loaded Model '1/2/3'")
         elif model_desc == "n_random":
             for i in range(self.get_numeric_input(self.n_patterns_field)):
-                self.save_pattern("random")
+                self.save_pattern("random", train=False)
+        self.network.train()
 
     def visualize_weight_matrix(self):
         self.network.visualize_weight_matrix()
